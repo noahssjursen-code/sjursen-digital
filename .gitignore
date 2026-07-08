@@ -11,3 +11,9 @@ venv/
 __pycache__/
 .pytest_cache/
 .pydantic_paths/
+
+# Komfyrvakt runtime artifacts
+services/komfyrvakt/api/static/
+services/komfyrvakt/api/data/
+*.db-shm
+*.db-wal

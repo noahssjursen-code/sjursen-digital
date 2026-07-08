@@ -1,201 +1,226 @@
 <script lang="ts">
-  import Card from "$shared/Card.svelte";
-  import Button from "$shared/Button.svelte";
-  import Badge from "$shared/Badge.svelte";
+	import { onDestroy, onMount } from 'svelte';
+	import Card from '$shared/Card.svelte';
+	import Button from '$shared/Button.svelte';
+	import Badge from '$shared/Badge.svelte';
+	import StateBadge from '$lib/StateBadge.svelte';
+	import { api, fmtTime, timeAgo } from '$lib/api';
 
-  // Basic state for the dashboard
-  let status = "online";
-  let activeStreams = 0;
-  let recentAlerts = [];
+	type Decision = {
+		id: number;
+		action: string;
+		source: string;
+		confidence: number | null;
+		reason: string;
+		delivery_status: string;
+	};
+	type Alert = {
+		id: number;
+		namespace: string;
+		instance_id: number;
+		instance_name: string | null;
+		entity_type: string | null;
+		kind: string;
+		summary: string;
+		status: string;
+		opened_at: string;
+		resolved_at: string | null;
+		decision: Decision | null;
+	};
 
-  async function fetchStatus() {
-    try {
-      const res = await fetch("/api/streams");
-      if (res.ok) {
-        const streams = await res.json();
-        activeStreams = streams.length;
-      }
-    } catch (e) {
-      console.error("Could not fetch streams", e);
-    }
-  }
+	let alerts: Alert[] = [];
+	let error = '';
+	let loading = true;
+	let showResolved = false;
+	let timer: ReturnType<typeof setInterval>;
 
-  import { onMount } from "svelte";
-  onMount(() => {
-    fetchStatus();
-  });
+	async function refresh() {
+		try {
+			alerts = await api<Alert[]>('/api/alerts');
+			error = '';
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+		}
+		loading = false;
+	}
+
+	async function ack(id: number) {
+		await api(`/api/alerts/${id}/ack`, { method: 'POST' });
+		await refresh();
+	}
+
+	$: visible = showResolved ? alerts : alerts.filter((a) => a.status !== 'resolved');
+	$: activeCount = alerts.filter((a) => a.status === 'active').length;
+
+	onMount(() => {
+		refresh();
+		timer = setInterval(refresh, 5000);
+	});
+	onDestroy(() => clearInterval(timer));
 </script>
 
-<main class="dashboard">
-  <header class="header">
-    <div class="brand">
-      <!-- Embedded hand-drawn Normal-style brand logo -->
-      <svg class="logo" viewBox="0 0 100 100" fill="none" role="img" aria-label="Sjursen Digital">
-        <path
-          d="M 46,25 C 33,25 25,32 25,41 C 25,51 45,49 45,59 C 45,68 37,75 24,75 L 60,75 C 73,75 75,64 75,50 C 75,36 73,25 60,25 Z"
-          stroke="currentColor"
-          stroke-width="6.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-      <div class="brand-text">
-        <h1>Komfyrvakt</h1>
-        <Badge>Self-Hosted</Badge>
-      </div>
-    </div>
-    
-    <div class="system-status {status}">
-      <span class="status-indicator"></span> {status.toUpperCase()}
-    </div>
-  </header>
+<div class="page-head">
+	<h2>Alert feed</h2>
+	<div class="head-actions">
+		<label class="toggle">
+			<input type="checkbox" bind:checked={showResolved} />
+			show resolved
+		</label>
+		<Button on:click={refresh}>Refresh</Button>
+	</div>
+</div>
 
-  <section class="stats">
-    <Card title="Active Streams">
-      <p class="value">{activeStreams}</p>
-    </Card>
-    <Card title="Active Alerts">
-      <p class="value">{recentAlerts.length}</p>
-    </Card>
-  </section>
-
-  <Card title="Circuit Breaker Status">
-    <div class="action-panel">
-      <h2>Welcome to your stream safety circuit</h2>
-      <p>
-        Komfyrvakt is armed and watching your infrastructure. To get started, configure an environment stream in the API, add limits, and push metrics to <code>/api/logs</code>.
-      </p>
-      
-      <div class="actions">
-        <Button on:click={fetchStatus}>Refresh Streams</Button>
-        <Button>View Active Rules</Button>
-      </div>
-    </div>
-  </Card>
-</main>
+{#if error}
+	<Card title="Error"><p class="error">{error}</p></Card>
+{:else if loading}
+	<p>Loading…</p>
+{:else if visible.length === 0}
+	<Card title={activeCount === 0 ? 'All quiet' : 'Nothing to show'}>
+		<p>
+			No {showResolved ? '' : 'unresolved '}alerts. Komfyrvakt is watching. Register entity types
+			and instances via the API, then push logs to <code>/api/logs</code>.
+		</p>
+	</Card>
+{:else}
+	{#each visible as alert (alert.id)}
+		<Card>
+			<div class="alert-row">
+				<div class="alert-main">
+					<div class="alert-meta">
+						<StateBadge state={alert.status} />
+						<Badge>{alert.kind}</Badge>
+						<span class="ns">{alert.namespace}</span>
+						<span class="when" title={fmtTime(alert.opened_at)}>{timeAgo(alert.opened_at)}</span>
+					</div>
+					<p class="summary">{alert.summary}</p>
+					{#if alert.instance_name}
+						<a class="instance-link" href="/instances/{alert.instance_id}">
+							{alert.instance_name} ({alert.entity_type})
+						</a>
+					{/if}
+					{#if alert.decision}
+						<div class="decision">
+							<span class="decision-action">{alert.decision.action}</span>
+							<span class="decision-source">
+								via {alert.decision.source}{alert.decision.confidence != null
+									? ` (${Math.round(alert.decision.confidence * 100)}%)`
+									: ''}
+							</span>
+							{#if alert.decision.reason}
+								<p class="decision-reason">{alert.decision.reason}</p>
+							{/if}
+						</div>
+					{/if}
+				</div>
+				<div class="alert-actions">
+					{#if alert.status === 'active'}
+						<Button on:click={() => ack(alert.id)}>Ack</Button>
+					{/if}
+				</div>
+			</div>
+		</Card>
+	{/each}
+{/if}
 
 <style>
-  :global(body) {
-    margin: 0;
-    font-family: 'Stack Sans Headline', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    /* Hand-drawn Normal-style theme: pure black and paper white */
-    background-color: #fdfdfb; 
-    color: #000000;
-    /* Very soft, subtle grid lines so they don't overpower the layout */
-    background-image: radial-gradient(#f1f3f5 1.5px, transparent 1.5px);
-    background-size: 20px 24px;
-    padding: 1rem;
-  }
+	.page-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 1rem;
+		margin-bottom: 1.5rem;
+	}
+	h2 {
+		margin: 0;
+		font-size: 1.4rem;
+		font-weight: 900;
+		text-transform: uppercase;
+		letter-spacing: -0.02em;
+	}
+	.head-actions {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+	.toggle {
+		font-size: 0.8rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		cursor: pointer;
+	}
+	.error {
+		font-family: monospace;
+		white-space: pre-wrap;
+	}
+	code {
+		background: #000;
+		color: #fff;
+		padding: 0.15rem 0.4rem;
+		border-radius: 4px;
+		font-size: 0.85rem;
+	}
 
-  .dashboard {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 1rem;
-  }
-
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #000000;
-    border-radius: 12px 6px 10px 6px/6px 12px 6px 10px;
-    padding-bottom: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 1.2rem;
-  }
-
-  .logo {
-    width: 50px;
-    height: 50px;
-    color: #000000;
-    /* Very subtle rotation for a minor hand-sketched accent */
-    transform: rotate(-1.5deg);
-  }
-
-  .brand-text {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.3rem;
-  }
-
-  .brand h1 {
-    margin: 0;
-    font-size: 2rem;
-    font-weight: 900;
-    letter-spacing: -0.03em;
-    text-transform: uppercase;
-  }
-
-  .system-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 800;
-    font-size: 0.8rem;
-    border: 2px solid #000000;
-    padding: 0.35rem 0.75rem;
-    background-color: #ffffff;
-    border-radius: 10px 6px 8px 6px/6px 10px 6px 8px;
-    box-shadow: 2px 2px 0px #000000;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .status-indicator {
-    width: 10px;
-    height: 10px;
-    background-color: #000000;
-    border-radius: 50%;
-    border: 2px solid #000000;
-  }
-
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .value {
-    margin: 0;
-    font-size: 3rem;
-    font-weight: 900;
-    letter-spacing: -0.04em;
-    font-family: monospace;
-  }
-
-  .action-panel h2 {
-    margin-top: 0;
-    font-size: 1.3rem;
-    font-weight: 800;
-    text-transform: uppercase;
-  }
-
-  .action-panel p {
-    color: #374151;
-    font-size: 1rem;
-    margin-bottom: 1.5rem;
-  }
-
-  code {
-    background-color: #000000;
-    color: #ffffff;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 0.9rem;
-    font-weight: 700;
-  }
-
-  .actions {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
+	.alert-row {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+	.alert-main {
+		flex: 1;
+		min-width: 0;
+	}
+	.alert-meta {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		flex-wrap: wrap;
+	}
+	.ns {
+		font-family: monospace;
+		font-size: 0.8rem;
+		font-weight: 700;
+	}
+	.when {
+		font-size: 0.8rem;
+		opacity: 0.6;
+	}
+	.summary {
+		margin: 0.6rem 0 0.2rem;
+		font-weight: 700;
+		font-size: 1.05rem;
+	}
+	.instance-link {
+		color: #000;
+		font-size: 0.85rem;
+		font-weight: 700;
+	}
+	.decision {
+		margin-top: 0.8rem;
+		border: 2px dashed #000;
+		border-radius: 10px 6px 12px 6px/6px 12px 6px 10px;
+		padding: 0.6rem 0.9rem;
+	}
+	.decision-action {
+		font-family: monospace;
+		font-weight: 900;
+		background: #000;
+		color: #fff;
+		padding: 0.15rem 0.5rem;
+		border-radius: 4px;
+	}
+	.decision-source {
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		font-weight: 700;
+		margin-left: 0.5rem;
+	}
+	.decision-reason {
+		margin: 0.5rem 0 0;
+		font-size: 0.9rem;
+		opacity: 0.85;
+	}
 </style>
