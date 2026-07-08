@@ -70,6 +70,7 @@ if ($Install) {
 Write-Host "`nBooting Komfyrvakt API and UI concurrently..." -ForegroundColor Cyan
 
 # Determine correct python/uvicorn paths based on virtual environment presence
+# Fallback to local user paths or global executables if virtual environment is not used
 if (Test-Path "$MyDir\api\venv") {
     if ($IsWindows) {
         $uvicornPath = "$MyDir\api\venv\Scripts\uvicorn.exe"
@@ -77,7 +78,27 @@ if (Test-Path "$MyDir\api\venv") {
         $uvicornPath = "$MyDir\api\venv/bin/uvicorn"
     }
 } else {
-    $uvicornPath = "uvicorn"
+    # Check if we can find uvicorn in local Python AppData (very common fallback on Windows)
+    $appDataUvicorn = "$env:APPDATA\Python\Python312\Scripts\uvicorn.exe"
+    $localAppDataUvicorn = "$env:LOCALAPPDATA\Programs\Python\Python312\Scripts\uvicorn.exe"
+    $userProfileUvicorn = "$env:USERPROFILE\AppData\Roaming\Python\Python312\Scripts\uvicorn.exe"
+    
+    if (Test-Path $appDataUvicorn) {
+        $uvicornPath = $appDataUvicorn
+    } elseif (Test-Path $localAppDataUvicorn) {
+        $uvicornPath = $localAppDataUvicorn
+    } elseif (Test-Path $userProfileUvicorn) {
+        $uvicornPath = $userProfileUvicorn
+    } else {
+        # Check standard PATH resolution
+        $hasGlobal = Get-Command uvicorn -ErrorAction SilentlyContinue
+        if ($hasGlobal) {
+            $uvicornPath = "uvicorn"
+        } else {
+            # Let's see if we can resolve it via python module execution (highly bulletproof)
+            $uvicornPath = "python -m uvicorn"
+        }
+    }
 }
 
 # Define thread jobs to run both services in parallel in the active console
@@ -88,8 +109,13 @@ $apiBlock = {
     param($path, $uvicorn)
     Set-Location $path
     Write-Host "[API] Starting FastAPI on http://localhost:8000 ..." -ForegroundColor Gray
-    # Run uvicorn inside the api folder so app paths resolve perfectly
-    & $uvicorn app.main:app --reload --port 8000
+    
+    # If uvicorn contains a space (like "python -m uvicorn"), we must split and run properly
+    if ($uvicorn -like "python*") {
+        python -m uvicorn app.main:app --reload --port 8000
+    } else {
+        & $uvicorn app.main:app --reload --port 8000
+    }
 }
 
 # Job 2: SvelteKit Development UI
