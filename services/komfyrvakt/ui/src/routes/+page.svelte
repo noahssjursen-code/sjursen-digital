@@ -1,7 +1,7 @@
 <script lang="ts">
-  import Card from "../lib/components/Card.svelte";
-  import Button from "../lib/components/Button.svelte";
-  import Badge from "../lib/components/Badge.svelte";
+  import Card from "$shared/Card.svelte";
+  import Button from "$shared/Button.svelte";
+  import Badge from "$shared/Badge.svelte";
 
   // Basic state for the dashboard
   let status = "online";
