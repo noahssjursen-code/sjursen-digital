@@ -16,6 +16,16 @@ def init_db() -> None:
     with engine.connect() as conn:
         conn.exec_driver_sql("PRAGMA journal_mode=WAL")
     SQLModel.metadata.create_all(engine)
+    _migrate()
+
+
+def _migrate() -> None:
+    """Lightweight migrations for databases created by older versions."""
+    with engine.connect() as conn:
+        columns = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(apikey)").fetchall()]
+        if columns and "key" not in columns:
+            conn.exec_driver_sql('ALTER TABLE apikey ADD COLUMN "key" TEXT')
+            conn.commit()
 
 
 def get_session():

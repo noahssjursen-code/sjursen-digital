@@ -1,3 +1,13 @@
+"""Auth model, tuned for self-hosting:
+
+- The DASHBOARD (admin/read endpoints) is open by default. Whoever can
+  reach the port owns the box; forcing them to paste a key from server
+  logs is hostile UX. Set KOMFYRVAKT_LOCK_DASHBOARD=1 to require an admin
+  key on those endpoints (for instances exposed beyond a trusted network).
+- INGEST (machines pushing logs) always requires a key. That's services
+  talking to services: keys are scoped per namespace and manageable from
+  the dashboard, where they can be viewed, generated, and revoked.
+"""
 import hashlib
 import os
 import secrets
@@ -13,22 +23,28 @@ def hash_key(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def bootstrap_admin_key(session: Session) -> str | None:
-    """Ensure an admin key exists.
+def new_raw_key() -> str:
+    return "kv_" + secrets.token_urlsafe(32)
 
-    - KOMFYRVAKT_ADMIN_KEY env var set: that key is guaranteed to be a valid
-      wildcard admin key on EVERY startup (created, un-revoked, or upgraded
-      as needed). This is the break-glass recovery path if all keys are lost.
-    - Otherwise, on first startup a random admin key is generated and
-      returned so it can be printed exactly once. Only hashes are stored;
-      raw keys are never recoverable afterwards.
+
+def dashboard_locked() -> bool:
+    return os.environ.get("KOMFYRVAKT_LOCK_DASHBOARD", "0") not in ("0", "", "false")
+
+
+def bootstrap_admin_key(session: Session) -> str | None:
+    """Ensure at least one admin key exists.
+
+    - KOMFYRVAKT_ADMIN_KEY env var set: that exact key is guaranteed to be a
+      valid wildcard admin key on EVERY startup (break-glass recovery path).
+    - Otherwise, on first startup a random admin key is generated. It stays
+      visible on the dashboard's Keys page.
     """
     env_raw = os.environ.get("KOMFYRVAKT_ADMIN_KEY")
     if env_raw:
         key_hash = hash_key(env_raw)
         existing = session.exec(select(ApiKey).where(ApiKey.key_hash == key_hash)).first()
         if existing is None:
-            session.add(ApiKey(name="env-admin", key_hash=key_hash, role="admin", namespace="*"))
+            session.add(ApiKey(name="env-admin", key=env_raw, key_hash=key_hash, role="admin", namespace="*"))
         elif existing.revoked or existing.role != "admin" or existing.namespace != "*":
             existing.revoked = False
             existing.role = "admin"
@@ -39,35 +55,45 @@ def bootstrap_admin_key(session: Session) -> str | None:
 
     if session.exec(select(ApiKey)).first() is not None:
         return None
-    raw = "kv_" + secrets.token_urlsafe(32)
-    session.add(ApiKey(name="bootstrap-admin", key_hash=hash_key(raw), role="admin", namespace="*"))
+    raw = new_raw_key()
+    session.add(ApiKey(name="bootstrap-admin", key=raw, key_hash=hash_key(raw), role="admin", namespace="*"))
     session.commit()
     return raw
 
 
-def get_api_key(
+def _lookup(session: Session, raw: str) -> ApiKey | None:
+    if not raw:
+        return None
+    return session.exec(
+        select(ApiKey).where(ApiKey.key_hash == hash_key(raw), ApiKey.revoked == False)  # noqa: E712
+    ).first()
+
+
+def require_admin(
     x_api_key: str = Header(default=""),
     session: Session = Depends(get_session),
 ) -> ApiKey:
-    if not x_api_key:
-        raise HTTPException(status_code=401, detail="Missing X-API-Key header")
-    key = session.exec(
-        select(ApiKey).where(ApiKey.key_hash == hash_key(x_api_key), ApiKey.revoked == False)  # noqa: E712
-    ).first()
+    """Dashboard endpoints. Open unless KOMFYRVAKT_LOCK_DASHBOARD is set."""
+    if not dashboard_locked():
+        return ApiKey(name="open-dashboard", key_hash="", role="admin", namespace="*")
+    key = _lookup(session, x_api_key)
     if key is None:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    return key
-
-
-def require_admin(key: ApiKey = Depends(get_api_key)) -> ApiKey:
+        raise HTTPException(status_code=401, detail="Dashboard is locked; valid X-API-Key required")
     if key.role != "admin":
         raise HTTPException(status_code=403, detail="Admin key required")
     return key
 
 
-def require_ingest(key: ApiKey = Depends(get_api_key)) -> ApiKey:
-    if key.role not in ("admin", "ingest"):
-        raise HTTPException(status_code=403, detail="Ingest or admin key required")
+def require_ingest(
+    x_api_key: str = Header(default=""),
+    session: Session = Depends(get_session),
+) -> ApiKey:
+    """Ingest always requires a key - this is machine-to-machine traffic."""
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="Missing X-API-Key header (ingest requires a key)")
+    key = _lookup(session, x_api_key)
+    if key is None:
+        raise HTTPException(status_code=401, detail="Invalid API key")
     return key
 
 

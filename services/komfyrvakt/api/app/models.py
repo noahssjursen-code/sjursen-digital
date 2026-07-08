@@ -116,6 +116,9 @@ class ApiKey(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     key_hash: str = Field(unique=True, index=True)
+    # Raw key, kept so the dashboard can show it (self-hosted: the operator
+    # owns the box and the DB, hiding keys from them is just bad UX).
+    key: Optional[str] = None
     role: str = "ingest"                      # admin | ingest
     namespace: str = "*"                      # "*" or a specific namespace
     revoked: bool = False

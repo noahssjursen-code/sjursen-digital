@@ -5,7 +5,7 @@
 		{ href: '/', label: 'Alerts' },
 		{ href: '/instances', label: 'Instances' },
 		{ href: '/types', label: 'Types' },
-		{ href: '/settings', label: 'Settings' }
+		{ href: '/keys', label: 'Keys' }
 	];
 
 	$: current = $page.url.pathname;

@@ -1,21 +1,29 @@
 """End-to-end demo against a running Komfyrvakt instance.
 
 Usage:
-    python demo.py <admin-api-key> [base-url]
+    python demo.py [base-url] [api-key]
 
-Registers a fridge_sensor entity type and one fridge, posts normal readings,
-then a sustained violation, and shows the resulting alert + decision.
+With the default open dashboard no key is needed - the demo creates its own
+ingest key via the API. Registers a fridge_sensor entity type and one fridge,
+posts normal readings, then a sustained violation, and shows the resulting
+alert + decision.
 """
 import sys
 import time
 
 import httpx
 
-KEY = sys.argv[1] if len(sys.argv) > 1 else ""
-BASE = sys.argv[2] if len(sys.argv) > 2 else "http://127.0.0.1:8000"
+BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
+KEY = sys.argv[2] if len(sys.argv) > 2 else ""
 NS = "demo-restaurant"
 
-client = httpx.Client(base_url=BASE, headers={"X-API-Key": KEY}, timeout=10)
+client = httpx.Client(base_url=BASE, headers={"X-API-Key": KEY} if KEY else {}, timeout=10)
+
+if not KEY:
+    resp = client.post("/api/keys", json={"name": "demo", "role": "ingest", "namespace": NS})
+    resp.raise_for_status()
+    client.headers["X-API-Key"] = resp.json()["key"]
+    print("[ok] created demo ingest key via dashboard API")
 
 
 def step(label, resp):

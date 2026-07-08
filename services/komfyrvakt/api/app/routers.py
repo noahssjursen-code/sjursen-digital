@@ -3,7 +3,6 @@
 Roles: admin keys manage everything; ingest keys can only POST logs.
 Namespace-scoped keys only see their own namespace.
 """
-import secrets
 from typing import Any, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
@@ -11,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import delete
 from sqlmodel import Session, func, select
 
-from .auth import check_namespace, hash_key, require_admin, require_ingest
+from .auth import check_namespace, hash_key, new_raw_key, require_admin, require_ingest
 from .database import get_session
 from .ingest import ingest_one
 from .models import Alert, ApiKey, Decision, EntityType, Instance, LogEntry, Namespace, utcnow
@@ -457,13 +456,21 @@ class ApiKeyIn(BaseModel):
     namespace: str = "*"
 
 
+def _key_out(k: ApiKey) -> dict:
+    return {
+        "id": k.id,
+        "name": k.name,
+        "key": k.key,  # None for keys created before raw storage; regenerate those
+        "role": k.role,
+        "namespace": k.namespace,
+        "revoked": k.revoked,
+        "created_at": k.created_at,
+    }
+
+
 @router.get("/keys")
 def list_keys(key: ApiKey = Depends(require_admin), session: Session = Depends(get_session)):
-    keys = session.exec(select(ApiKey)).all()
-    return [
-        {"id": k.id, "name": k.name, "role": k.role, "namespace": k.namespace, "revoked": k.revoked, "created_at": k.created_at}
-        for k in keys
-    ]
+    return [_key_out(k) for k in session.exec(select(ApiKey)).all()]
 
 
 @router.post("/keys")
@@ -472,21 +479,19 @@ def create_key(body: ApiKeyIn, key: ApiKey = Depends(require_admin), session: Se
         raise HTTPException(status_code=422, detail="role must be 'admin' or 'ingest'")
     if key.namespace != "*" and body.namespace != key.namespace:
         raise HTTPException(status_code=403, detail="Cannot create keys outside your namespace scope")
-    raw = "kv_" + secrets.token_urlsafe(32)
-    record = ApiKey(name=body.name, key_hash=hash_key(raw), role=body.role, namespace=body.namespace)
+    raw = new_raw_key()
+    record = ApiKey(name=body.name, key=raw, key_hash=hash_key(raw), role=body.role, namespace=body.namespace)
     session.add(record)
     session.commit()
     session.refresh(record)
-    # The raw key is shown exactly once; only the hash is stored.
-    return {"id": record.id, "name": record.name, "role": record.role, "namespace": record.namespace, "key": raw}
+    return _key_out(record)
 
 
 @router.delete("/keys/{key_id}")
-def revoke_key(key_id: int, key: ApiKey = Depends(require_admin), session: Session = Depends(get_session)):
+def delete_key(key_id: int, key: ApiKey = Depends(require_admin), session: Session = Depends(get_session)):
     record = session.get(ApiKey, key_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Key not found")
-    record.revoked = True
-    session.add(record)
+    session.delete(record)
     session.commit()
-    return {"id": record.id, "revoked": True}
+    return {"id": key_id, "deleted": True}

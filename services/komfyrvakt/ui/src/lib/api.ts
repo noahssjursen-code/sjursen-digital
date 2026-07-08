@@ -1,15 +1,3 @@
-import { goto } from '$app/navigation';
-
-const KEY_STORAGE = 'komfyrvakt_api_key';
-
-export function getApiKey(): string {
-	return localStorage.getItem(KEY_STORAGE) ?? '';
-}
-
-export function setApiKey(key: string): void {
-	localStorage.setItem(KEY_STORAGE, key.trim());
-}
-
 export class ApiError extends Error {
 	status: number;
 	constructor(status: number, message: string) {
@@ -23,14 +11,9 @@ export async function api<T = unknown>(path: string, options: RequestInit = {}):
 		...options,
 		headers: {
 			'Content-Type': 'application/json',
-			'X-API-Key': getApiKey(),
 			...(options.headers ?? {})
 		}
 	});
-	if (res.status === 401) {
-		goto('/settings');
-		throw new ApiError(401, 'Not authenticated - set your API key');
-	}
 	if (!res.ok) {
 		throw new ApiError(res.status, await res.text());
 	}

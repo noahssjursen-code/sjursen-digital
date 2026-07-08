@@ -26,10 +26,7 @@ async def lifespan(app: FastAPI):
     with Session(engine) as session:
         raw = bootstrap_admin_key(session)
     if raw:
-        logger.warning("=" * 72)
-        logger.warning("FIRST STARTUP - bootstrap admin API key (shown only once, save it):")
-        logger.warning("  %s", raw)
-        logger.warning("=" * 72)
+        logger.info("First startup - admin API key created: %s (also visible on the dashboard's Keys page)", raw)
     elif os.environ.get("KOMFYRVAKT_ADMIN_KEY"):
         logger.info("Admin key from KOMFYRVAKT_ADMIN_KEY is active")
 

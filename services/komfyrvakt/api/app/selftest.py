@@ -10,7 +10,10 @@ Two ways to run it:
 
 2. Manually against a running server:
 
-       python -m app.selftest <admin-key> [base-url]
+       python -m app.selftest [base-url] [admin-key]
+
+   No key needed while the dashboard is open (the default); one is created
+   and cleaned up automatically. Pass one if KOMFYRVAKT_LOCK_DASHBOARD is set.
 
 Everything runs in a reserved namespace (_selftest) which is purged before
 and after, so it never pollutes real data. The silence-detection check
@@ -70,10 +73,16 @@ async def run_suite(client: httpx.AsyncClient, admin_key: str) -> Check:
     check.expect("health endpoint responds", r.status_code == 200 and r.json().get("status") == "ok",
                  f"status {r.status_code}")
 
+    # 200 = open dashboard (default), 401 = KOMFYRVAKT_LOCK_DASHBOARD is set.
     r = await client.get("/api/alerts")
-    check.expect("auth: missing key rejected (401)", r.status_code == 401, f"got {r.status_code}")
-    r = await client.get("/api/alerts", headers={"X-API-Key": "kv_definitely_wrong"})
-    check.expect("auth: invalid key rejected (401)", r.status_code == 401, f"got {r.status_code}")
+    check.expect("dashboard responds sanely without key (200 open / 401 locked)",
+                 r.status_code in (200, 401), f"got {r.status_code}")
+
+    r = await client.post("/api/logs", json={"namespace": NS, "instance": "x", "values": {}})
+    check.expect("ingest without key rejected (401)", r.status_code == 401, f"got {r.status_code}")
+    r = await client.post("/api/logs", headers={"X-API-Key": "kv_definitely_wrong"},
+                          json={"namespace": NS, "instance": "x", "values": {}})
+    check.expect("ingest with invalid key rejected (401)", r.status_code == 401, f"got {r.status_code}")
 
     # ---------------------------------------------------------- registration
     basic_type = {
@@ -270,14 +279,15 @@ async def run_suite(client: httpx.AsyncClient, admin_key: str) -> Check:
                           json={"namespace": "some-other-ns", "instance": "x", "values": {}})
     check.expect("ingest key blocked outside its namespace (403)", r.status_code == 403, f"got {r.status_code}")
 
-    r = await client.get("/api/alerts", headers={"X-API-Key": ingest_key})
-    check.expect("ingest key blocked from admin endpoints (403)", r.status_code == 403, f"got {r.status_code}")
+    r = await client.get("/api/keys", headers=H)
+    raws = [k.get("key") for k in r.json()] if r.status_code == 200 else []
+    check.expect("keys viewable on dashboard (raw key retrievable)", ingest_key in raws)
 
     if ingest_key_id:
         await client.delete(f"/api/keys/{ingest_key_id}", headers=H)
         r = await client.post("/api/logs", headers={"X-API-Key": ingest_key},
                               json={"namespace": NS, "instance": "basic-1", "values": {"temp_c": 4.4}})
-        check.expect("revoked key rejected (401)", r.status_code == 401, f"got {r.status_code}")
+        check.expect("deleted key rejected (401)", r.status_code == 401, f"got {r.status_code}")
 
     # ---------------------------------------------------------- silence
     await log("silent-1", {"temp_c": 4.0})
@@ -360,15 +370,28 @@ def main() -> None:
     import sys
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    if len(sys.argv) < 2:
-        print("usage: python -m app.selftest <admin-api-key> [base-url]")
-        sys.exit(2)
-    key = sys.argv[1]
-    base = sys.argv[2] if len(sys.argv) > 2 else "http://127.0.0.1:8000"
+    base = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000"
+    key = sys.argv[2] if len(sys.argv) > 2 else ""
 
     async def go() -> Check:
         async with httpx.AsyncClient(base_url=base, timeout=30) as client:
-            return await run_suite(client, key)
+            admin_key = key
+            temp_key_id = None
+            if not admin_key:
+                r = await client.post("/api/keys",
+                                      json={"name": "selftest-cli", "role": "admin", "namespace": "*"})
+                if r.status_code != 200:
+                    print("Could not create a key (dashboard locked?). "
+                          "Usage: python -m app.selftest [base-url] [admin-key]")
+                    sys.exit(2)
+                admin_key = r.json()["key"]
+                temp_key_id = r.json()["id"]
+            try:
+                return await run_suite(client, admin_key)
+            finally:
+                if temp_key_id is not None:
+                    await client.delete(f"/api/keys/{temp_key_id}",
+                                        headers={"X-API-Key": admin_key})
 
     check = asyncio.run(go())
     sys.exit(0 if not check.failed else 1)
