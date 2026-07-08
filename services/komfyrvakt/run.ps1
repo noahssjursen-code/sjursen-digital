@@ -20,6 +20,9 @@ Write-Host "=========================================================" -Foregrou
 Write-Host "             Komfyrvakt Developer Console                " -ForegroundColor Cyan
 Write-Host "=========================================================" -ForegroundColor Cyan
 
+# Check if we are running on Windows (PowerShell 5.1 doesn't have $IsWindows, only PowerShell 6+ does)
+$isWin = $IsWindows -or ($env:OS -like "*Windows*") -or ($null -ne $env:windir)
+
 # Check if we should auto-trigger installation (if no venv or node_modules exists)
 $hasVenv = Test-Path "$MyDir\api\venv"
 $hasNodeModules = Test-Path "$MyDir\ui\node_modules"
@@ -41,7 +44,7 @@ if ($Install) {
         }
         
         # Activate and install
-        if ($IsWindows) {
+        if ($isWin) {
             $pipPath = "venv\Scripts\pip.exe"
         } else {
             $pipPath = "venv/bin/pip"
@@ -61,7 +64,7 @@ if ($Install) {
     Write-Host "`n[2/2] Installing SvelteKit frontend dependencies..." -ForegroundColor Yellow
     Push-Location "$MyDir\ui"
     try {
-        if ($IsWindows) {
+        if ($isWin) {
             cmd.exe /c "npm install"
         } else {
             npm install
@@ -85,7 +88,7 @@ Write-Host "`nBooting Komfyrvakt API and UI concurrently..." -ForegroundColor Cy
 # Determine correct python/uvicorn paths based on virtual environment presence
 # Using the virtual environment's python directly is 100% bulletproof for loading correct site-packages!
 if (Test-Path "$MyDir\api\venv") {
-    if ($IsWindows) {
+    if ($isWin) {
         $apiCmd = "$MyDir\api\venv\Scripts\python.exe"
     } else {
         $apiCmd = "$MyDir\api\venv/bin/python"
@@ -97,7 +100,7 @@ if (Test-Path "$MyDir\api\venv") {
 }
 
 # Run the SvelteKit development process via npm
-if ($IsWindows) {
+if ($isWin) {
     $uiCmd = "cmd.exe"
     $uiArgs = @("/c", "npm run dev")
 } else {
