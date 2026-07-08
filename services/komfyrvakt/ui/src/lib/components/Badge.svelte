@@ -11,11 +11,11 @@
     color: #ffffff;
     font-weight: 800;
     text-transform: uppercase;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     letter-spacing: 0.04em;
-    padding: 0.25rem 0.6rem;
-    border-radius: 15px 225px 15px 255px/225px 15px 255px 15px;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px 12px 6px 12px/12px 6px 12px 6px;
     display: inline-block;
-    border: 2px solid #000000;
+    border: 1.5px solid #000000;
   }
 </style>

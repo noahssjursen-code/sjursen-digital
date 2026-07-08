@@ -79,11 +79,11 @@
     margin: 0;
     font-family: 'Stack Sans Headline', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     /* Hand-drawn Normal-style theme: pure black and paper white */
-    background-color: #fcfbf7; 
+    background-color: #fdfdfb; 
     color: #000000;
-    /* Subtle hand-drawn lined margin paper lines to sell the sketch feel */
-    background-image: radial-gradient(#e5e7eb 1.5px, transparent 1.5px);
-    background-size: 24px 24px;
+    /* Very soft, subtle grid lines so they don't overpower the layout */
+    background-image: radial-gradient(#f1f3f5 1.5px, transparent 1.5px);
+    background-size: 20px 24px;
     padding: 1rem;
   }
 
@@ -97,8 +97,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 3.5px solid #000000;
-    border-radius: 15px 255px 15px 255px/255px 15px 255px 15px;
+    border-bottom: 2px solid #000000;
+    border-radius: 12px 6px 10px 6px/6px 12px 6px 10px;
     padding-bottom: 1.5rem;
     margin-bottom: 2rem;
   }
@@ -113,8 +113,8 @@
     width: 50px;
     height: 50px;
     color: #000000;
-    /* Apply organic hand-drawn wobble directly to the logo via CSS border radius mapping */
-    transform: rotate(-3deg);
+    /* Very subtle rotation for a minor hand-sketched accent */
+    transform: rotate(-1.5deg);
   }
 
   .brand-text {
@@ -137,12 +137,12 @@
     align-items: center;
     gap: 0.5rem;
     font-weight: 800;
-    font-size: 0.85rem;
-    border: 3px solid #000000;
-    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    border: 2px solid #000000;
+    padding: 0.35rem 0.75rem;
     background-color: #ffffff;
-    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-    box-shadow: 3px 3px 0px #000000;
+    border-radius: 10px 6px 8px 6px/6px 10px 6px 8px;
+    box-shadow: 2px 2px 0px #000000;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }

@@ -16,15 +16,15 @@
   .normal-button {
     background-color: #ffffff;
     color: #000000;
-    border: 3px solid #000000;
+    border: 2px solid #000000;
     font-weight: 800;
     text-transform: uppercase;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     letter-spacing: 0.02em;
-    padding: 0.6rem 1.2rem;
-    /* Hand-drawn button profile */
-    border-radius: 125px 5px 95px 5px/15px 95px 8px 115px;
-    box-shadow: 4px 4px 0px #000000;
+    padding: 0.5rem 1.1rem;
+    /* Toned-down hand-drawn button profile */
+    border-radius: 12px 6px 10px 6px/6px 10px 6px 8px;
+    box-shadow: 2px 2px 0px #000000;
     cursor: pointer;
     transition: all 0.1s ease;
     display: inline-flex;
@@ -35,11 +35,11 @@
 
   .normal-button:hover:not(:disabled) {
     transform: translate(-1px, -1px);
-    box-shadow: 5px 5px 0px #000000;
+    box-shadow: 3px 3px 0px #000000;
   }
 
   .normal-button:active:not(:disabled) {
-    transform: translate(4px, 4px);
+    transform: translate(2px, 2px);
     box-shadow: 0px 0px 0px #000000;
   }
 
