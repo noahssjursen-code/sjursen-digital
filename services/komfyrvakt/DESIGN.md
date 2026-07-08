@@ -11,39 +11,80 @@
 
 ## 1. Principles
 
-1. **Deterministic first, AI second.** Rules (threshold + duration + schedule)
+1. **Open data model.** Komfyrvakt has no domain knowledge. It does not know
+   what a fridge, a payroll run, or a windmill is. Customers declare their own
+   entity types with arbitrary typed fields, their own definitions of
+   abnormal, and their own action vocabularies. Every domain-specific example
+   in this document (temperature sensors, etc.) is illustration only — nothing
+   in the engine is specialized to it.
+2. **Deterministic first, AI second.** Rules (threshold + duration + schedule)
    decide *whether* something is abnormal. The AI only decides *what to do about
    it*, and only when configured. With AI disabled, Komfyrvakt is still a fully
    functional watchdog.
-2. **Closed action vocabulary.** The AI never free-forms. It picks from actions the
+3. **Closed action vocabulary.** The AI never free-forms. It picks from actions the
    developer declared, with a reason string. Garbage or timeout → fall back to the
    rule's default action.
-3. **Self-contained.** One container: FastAPI + SQLite + compiled SvelteKit UI.
+4. **Self-contained.** One container: FastAPI + SQLite + compiled SvelteKit UI.
    No data leaves the host unless the customer configures an external AI endpoint
    or webhook target.
-4. **Code-first integration.** Registering entity types is declarative and
+5. **Code-first integration.** Registering entity types is declarative and
    idempotent, done from the customer's own service at startup. The UI is a
    viewer, not a required configuration tool.
-5. **Boring operations.** Backup = copy one SQLite file. Upgrade = pull new image.
+6. **Boring operations.** Backup = copy one SQLite file. Upgrade = pull new image.
    Schema migrations run automatically on startup.
 
 ## 2. Core objects
 
-The entire public surface is four objects plus the outbox.
+The entire public surface is a namespace plus four objects plus the outbox.
+
+### 2.0 Namespace
+
+One Komfyrvakt instance can serve unrelated domains at once — a SaaS backend,
+an HR integration, and industrial telemetry logging to the same deployment.
+Namespaces are the isolation boundary that makes that safe:
+
+```
+hr/          employee lifecycle events
+turbines/    industrial telemetry
+platform/    SaaS error rates and queues
+```
+
+Everything hangs off the namespace:
+
+- **EntityTypes and Instances** are namespaced (`turbines/rotor_sensor`)
+- **API keys are scoped to a namespace** (and to ingest vs. admin). A leaked
+  turbine ingest key cannot write into `hr/`; an HR admin key cannot read
+  turbine data
+- **AI policy is per-namespace:** allowed or forbidden, and which endpoint.
+  A customer can enable AI decisions for `turbines/` while hard-forbidding any
+  AI processing of `hr/` data
+- **Retention defaults and UI filtering** are per-namespace
+
+A single-domain deployment just uses one namespace (`default`) and never
+thinks about it.
 
 ### 2.1 EntityType
 
-A declarative contract: schema + constraints + allowed actions.
+A declarative contract: schema + constraints + allowed actions. The `fields`
+dict is fully open — any number of fields, any names, typed as `number`,
+`string`, `boolean`, or `timestamp`. Komfyrvakt attaches no meaning to field
+names; meaning lives entirely in the customer's constraints and action
+descriptions.
+
+Example (illustration only — could equally be `deploy_pipeline`,
+`employee_event`, or `rotor_sensor`):
 
 ```json
 {
+  "namespace": "default",
   "name": "temperature_sensor",
   "description": "Temperature sensor for fridge environments",
   "expected_every_seconds": 10,
   "fields": {
     "temp_c":    { "type": "number" },
     "door_open": { "type": "boolean" },
-    "location":  { "type": "string" }
+    "location":  { "type": "string" },
+    "operator":  { "type": "string", "sensitive": true }
   },
   "constraints": [
     { "field": "temp_c",    "ok":    { "min": 0, "max": 6 } },
@@ -68,6 +109,12 @@ A declarative contract: schema + constraints + allowed actions.
   who knows what the actions mean.
 - **`default_action`** is executed when the AI is disabled, unreachable, or
   returns an invalid decision.
+- **`sensitive: true`** marks a field as containing personal or confidential
+  data. Sensitive fields are **never included in AI context** (redacted in
+  `context_snapshot` too), and they are the erasable part of the audit trail:
+  a purge request deletes the *values* while keeping the decision skeleton
+  (what fired, when, what was decided). This is what makes HR-type
+  integrations and GDPR erasure compatible with the never-delete audit tier.
 
 ### 2.2 Instance
 
@@ -163,18 +210,32 @@ the audit trail.
 
 ### 4.1 Constraints
 
-Three parts, all deterministic:
+Constraints are deterministic expressions over the instance's field state —
+not hardcoded checks. Three composable parts:
 
-- **Value test** — `min/max`, `above/below`, `equals`, `one_of`
+- **Value test** — `min/max`, `above/below`, `equals`, `one_of`, over one
+  field **or a boolean combination of fields** (`rpm > 3000 AND wind_speed < 4`
+  — real faults are often cross-field)
 - **Duration** — `for_seconds`: violation must persist continuously
 - **Schedule** — optional named window (`after_closing`, `weekends`, cron-like
   ranges) during which the constraint applies or is suppressed
+
+The rule engine is built as pluggable *evaluators* over the log window, so new
+constraint kinds are additive, not rewrites.
 
 ### 4.2 Why duration + schedule matter
 
 A bare min/max check is what every dumb tool does. `17°C` is not the alarm —
 `17°C for five minutes, after closing` is. This is where Komfyrvakt is smart
 *before* any AI is involved.
+
+### 4.2b Event time, not arrival time
+
+Constraints are evaluated on the event timestamp (`ts`), not arrival time.
+Sources buffer and flush (a turbine reconnecting after an outage posts hours
+of backlog at once): a historical replay must never be evaluated as "now",
+and late arrivals within a configurable lateness window must slot into their
+correct position in the duration logic.
 
 ### 4.3 Silence detection (dead-man switch)
 
@@ -256,13 +317,17 @@ trail.
 ## 8. API surface (v1)
 
 ```
+# Namespaces
+PUT  /api/namespaces/{ns}           create/update (AI policy, retention defaults)
+GET  /api/namespaces
+
 # Contracts
-PUT  /api/entity-types/{name}       idempotent register/update (bumps version)
-GET  /api/entity-types
+PUT  /api/{ns}/entity-types/{name}  idempotent register/update (bumps version)
+GET  /api/{ns}/entity-types
 
 # Instances
-PUT  /api/instances/{name}          create/update, binds to a type, overrides
-GET  /api/instances
+PUT  /api/{ns}/instances/{name}     create/update, binds to a type, overrides
+GET  /api/{ns}/instances
 
 # Ingest
 POST /api/logs                      single or batch
@@ -278,9 +343,11 @@ POST /api/decisions/{id}/result     customer reports execution outcome
 GET  /api/health                    liveness + self-metrics
 ```
 
-Auth: scoped API keys. An ingest key can only post logs; an admin key manages
-types and reads decisions. Keys are revocable individually, so one leaked
-sensor key never exposes data.
+Auth: API keys scoped on two axes — **operation** (ingest vs. admin) and
+**namespace**. An ingest key can only post logs, and only into its namespace;
+an admin key manages types and reads decisions within its namespace. Keys are
+revocable individually, so one leaked sensor key never exposes anything beyond
+its own slice.
 
 ## 9. Self-monitoring
 
@@ -320,7 +387,21 @@ black-and-white, subtle hand-drawn line character.
   (Ed25519) — payload + signature verified locally against an embedded public
   key; no phone-home. Not implemented until there is something worth protecting.
 
-## 12. Build order
+## 12. Designed-for-v2 extensions
+
+Spec'd now so v1 code doesn't paint us into a corner; not built until needed:
+
+- **Aggregate constraints** — frequency/window conditions over many events,
+  not one value: "more than 50 `payment_failed` events in 5 minutes",
+  "average latency over 10 minutes above 800ms". Fits the evaluator model as
+  one more constraint kind.
+- **Cross-instance correlation** — constraints spanning instances ("3 of 12
+  turbines in `suspect` simultaneously").
+- **Postgres backend** — if a deployment outgrows SQLite ingest comfort;
+  candidate paid-tier feature.
+- **PDF audit export** — CSV first.
+
+## 13. Build order
 
 1. Ingest hardening: EntityType registration, schema validation, dedupe, API keys
 2. Rule engine: constraints (value/duration/schedule), state machine, silence detection
