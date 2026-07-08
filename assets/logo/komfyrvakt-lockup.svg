@@ -1,5 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" fill="none" role="img" aria-label="Komfyrvakt">
-  <!-- Perfect vertical alignment centering, giving breathing room to the icon and wordmark -->
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Stack+Sans+Headline:wght@700&amp;display=swap');
+      .brand-text {
+        font-family: 'Stack Sans Headline', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        fill: currentColor;
+      }
+    </style>
+  </defs>
+  <!-- Centered and scaled continuous ribbon logo icon -->
   <g transform="translate(20, 20) scale(0.6)" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
     <path
       d="M 46,25 C 33,25 25,32 25,41 C 25,51 45,49 45,59 C 45,68 37,75 24,75 L 60,75 C 73,75 75,64 75,50 C 75,36 73,25 60,25 Z"
@@ -9,11 +21,7 @@
     x="92"
     y="50%"
     dominant-baseline="central"
-    fill="currentColor"
-    font-family="'Stack Sans Headline', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-    font-size="28"
-    font-weight="700"
-    letter-spacing="-0.04em"
+    class="brand-text"
   >
     Komfyrvakt
   </text>

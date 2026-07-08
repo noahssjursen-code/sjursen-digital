@@ -1,4 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 100" fill="none" role="img" aria-label="Sjursen Digital">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Stack+Sans+Headline:wght@700&amp;display=swap');
+      .brand-text {
+        font-family: 'Stack Sans Headline', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        fill: currentColor;
+      }
+    </style>
+  </defs>
   <!-- Centered and scaled continuous ribbon logo icon -->
   <g transform="translate(20, 20) scale(0.6)" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
     <path
@@ -9,11 +21,7 @@
     x="92"
     y="50%"
     dominant-baseline="central"
-    fill="currentColor"
-    font-family="'Stack Sans Headline', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-    font-size="28"
-    font-weight="700"
-    letter-spacing="-0.04em"
+    class="brand-text"
   >
     Sjursen Digital
   </text>
