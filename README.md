@@ -31,8 +31,10 @@ It is built to be **implemented anywhere** you need a reliable monitoring brain.
 ```text
 sjursen-digital/
 ├── assets/logo/        # Brand assets
-├── services/           # Backend services and APIs
-└── applications/       # Thin frontends and admin UIs
+└── services/           # Self-contained products and services
+    └── komfyrvakt/     # Flagship product: Event safety system
+        ├── api/        # FastAPI backend & SQLite database
+        └── ui/         # SvelteKit frontend (compiled into api/static/)
 ```
 
 ## Brand

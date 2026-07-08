@@ -8,8 +8,8 @@ const config = {
 		// adapter-static is ideal for single-container architectures
 		// since it builds a zero-dependency SPA that FastAPI can serve directly
 		adapter: adapter({
-			pages: '../../services/komfyrvakt-api/static',
-			assets: '../../services/komfyrvakt-api/static',
+			pages: '../api/static',
+			assets: '../api/static',
 			fallback: 'index.html',
 			precompress: false,
 			strict: true

@@ -79,7 +79,7 @@ def read_logs(stream_id: int, limit: int = 100, session: Session = Depends(get_s
 # --- Serving Frontend SPA in Production ---
 
 # Path to static folder where compiled SvelteKit SPA will sit
-UI_DIST_DIR = os.path.join(os.path.dirname(__file__), "../static")
+UI_DIST_DIR = os.path.join(os.path.dirname(__file__), "static")
 
 if os.path.exists(UI_DIST_DIR):
     app.mount("/", StaticFiles(directory=UI_DIST_DIR, html=True), name="static")
