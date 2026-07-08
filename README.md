@@ -1,39 +1,44 @@
-# Sjursen Digital Monorepo
+# Sjursen Digital
 
-Welcome to the official monorepo for **Sjursen Digital**, a professional software development and digital consulting company registered in Norway. This repository serves as the central hub for our open-source tools, commercial SaaS products, and custom digital infrastructure.
+Sjursen Digital builds **self-hostable backend services** that solve real operational problems.
 
-## Our Core Products
+You run the software on your own infrastructure. We build the system, ship updates, and offer a subscription for the software, support, and commercial features. Your data stays on your server.
 
-### 🛠️ Obsero
-**Obsero** (from Latin *observare* — to observe, protect, and watch over) is an ultra-lightweight, self-hosted safety, compliance, and asset telemetry platform. 
+## What we build
 
-It is designed to solve the physical-digital loop for workshops, makerspaces, vocational schools, and construction sites where tracking equipment, verifying user certifications, and logging safety events are critical.
+Focused tools — not platforms. Backend-heavy services with minimal UI:
 
-- **Mobile-First / PWA**: Built optimized for smartphones with hardware-accelerated camera QR-code scanning.
-- **Self-Hosted & Private**: Packaged as a single lightweight Docker container running an embedded SQLite database. Extremely low overhead, running perfectly on anything from a Synology NAS to a $4/month VPS.
-- **Safety & Certification**: Restrict machinery usage (e.g., CNC routers, electric saws) to certified personnel by scanning QR codes, logging runtime diagnostics, safety checklists, and telemetry datapoints.
-- **Physical-Digital Loop**: Integrated with durable, weatherproof pre-printed QR sticker sheets from Sjursen Digital for instant asset binding.
+- APIs and workers that take input, do the work, and return output
+- Docker-based deployments that are simple to install and operate
+- Clear free and paid tiers: core features self-hosted, business features on subscription
 
----
+Examples of the kind of problems we target: authorization, integrations, automation pipelines, audit/logging, and other workflows that teams currently solve with spreadsheets, manual glue, or fragile in-house scripts.
 
-## Repository Structure
+## Products
+
+### Komfyrvakt
+
+**Komfyrvakt** (Norwegian: *stove guard* — a safety device that monitors stove activity and cuts the power if a burner gets dangerously hot) is a self-hostable event monitoring and decision engine. It acts as an automated digital circuit breaker and escalation guard for any stream of data.
+
+You post logs (from IoT sensors, SaaS apps, background workers, or integrations). Komfyrvakt monitors the stream, detects when a pattern crosses your safety thresholds, and invokes an AI layer only when human-like judgment is needed. The AI analyzes the context—what the stream is, what the data says, and what actions are allowed—and returns a structured decision. Your integration code parses that decision to run the safety handler: page a technician, shut off an API key, trigger a webhook, or alert managers.
+
+It is built to be **implemented anywhere** you need a reliable monitoring brain. Completely self-hosted so you keep absolute control over your logs, credentials, and compute.
+
+**Example:** A restaurant chain monitors six fridge/freezer environments. Sensors post temperature readings every 10 seconds. A door stays open after closing, temperatures climb, and the stream crosses thresholds. Komfyrvakt analyzes the pattern and decides whether to alert a manager, escalate, or dismiss — your integration code executes the result.
+
+## Repository
 
 ```text
 sjursen-digital/
-├── assets/
-│   └── logo/             # Brand identity vectors (continuous ribbon SD mark)
-├── services/             # Backend services & APIs
-└── applications/         # Frontend web applications & PWAs
+├── assets/logo/        # Brand assets
+├── services/           # Backend services and APIs
+└── applications/       # Thin frontends and admin UIs
 ```
 
-## Branding & Assets
+## Brand
 
-Our visual identity centers around a modern, geometric continuous ribbon forming an **S** and a **D** in a single, balanced stroke:
-
-- **Primary Logo**: Located at `assets/logo/sjursen-digital.svg`
-- **Lockup Logo (Icon + Wordmark)**: Located at `assets/logo/sjursen-digital-lockup.svg`
+Primary logo: `assets/logo/sjursen-digital.svg`
 
 ---
 
-*Engineered by Noah Sebastian Sjursen · Bergen, Norway*  
-*Bestått meget godt (Excellent) — Norwegian Trade Certificate in IT Development*
+Noah Sebastian Sjursen · Bergen, Norway
