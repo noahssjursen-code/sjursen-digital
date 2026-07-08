@@ -2,15 +2,12 @@
 	import { onMount } from 'svelte';
 	import Card from '$shared/Card.svelte';
 	import Button from '$shared/Button.svelte';
-	import Badge from '$shared/Badge.svelte';
-	import { api } from '$lib/api';
 
 	type SystemModule = {
 		id: string;
 		name: string;
 		description: string;
 		installed: boolean;
-		licensed: boolean;
 		launch_url: string;
 	};
 
@@ -20,8 +17,9 @@
 
 	async function refresh() {
 		try {
-			modules = await api<SystemModule[]>('/api/system/modules');
-			error = '';
+			const res = await fetch('/api/system/modules');
+			if (!res.ok) throw new Error(await res.text());
+			modules = await res.json();
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		}
@@ -43,8 +41,7 @@
 	</Card>
 {:else}
 	<p class="intro">
-		Sjursen Digital provides modular enterprise services for businesses.
-		Select a module to launch. Admin and viewing dashboards are fully self-contained.
+		Welcome to your Sjursen Digital software suite. Select an application module below to launch the dashboard.
 	</p>
 
 	<div class="modules-grid">
@@ -54,41 +51,16 @@
 					<p class="desc">{mod.description}</p>
 					
 					<div class="status-line">
-						<div class="badges">
-							{#if mod.licensed}
-								<span class="licensed-badge">Licensed</span>
-							{:else}
-								<span class="paywall-badge">Paywalled</span>
-							{/if}
-
-							{#if mod.installed}
-								<Badge>Installed</Badge>
-							{:else}
-								<span class="uninstalled-badge">Coming Soon</span>
-							{/if}
-						</div>
-
 						<div class="action">
-							{#if mod.installed && mod.licensed}
+							{#if mod.installed}
 								<a href={mod.launch_url} class="launch-link">
-									<Button>Launch</Button>
-								</a>
-							{:else if mod.installed && !mod.licensed}
-								<a href="/keys" class="unlock-hint">
-									<Button disabled={true}>License Required</Button>
+									<Button>Launch App</Button>
 								</a>
 							{:else}
-								<Button disabled={true}>Not Available</Button>
+								<Button disabled={true}>Coming Soon</Button>
 							{/if}
 						</div>
 					</div>
-
-					{#if !mod.licensed && mod.installed}
-						<p class="hint">
-							Need access? Generate a cryptographically signed license in your terminal and 
-							paste it in the <a class="inline-link" href="/keys">Licensing Portal</a>.
-						</p>
-					{/if}
 				</div>
 			</Card>
 		{/each}
@@ -97,18 +69,18 @@
 
 <style>
 	h2 {
-		margin: 0 0 1.5rem;
-		font-size: 1.4rem;
-		font-weight: 900;
-		text-transform: uppercase;
+		margin: 0 0 0.5rem;
+		font-size: 1.5rem;
+		font-weight: 700;
 		letter-spacing: -0.02em;
+		color: var(--sd-text);
 	}
 	.intro {
-		font-size: 1rem;
+		font-size: 0.95rem;
 		margin-top: 0;
-		margin-bottom: 2rem;
+		margin-bottom: 2.5rem;
 		line-height: 1.5;
-		opacity: 0.85;
+		color: var(--sd-text-muted);
 	}
 	.error {
 		font-family: monospace;
@@ -130,85 +102,21 @@
 
 	.desc {
 		margin: 0 0 1.5rem;
-		font-size: 1rem;
-		line-height: 1.4;
-		opacity: 0.9;
+		font-size: 0.95rem;
+		line-height: 1.5;
+		color: var(--sd-text-muted);
 	}
 
 	.status-line {
 		display: flex;
-		justify-content: space-between;
+		justify-content: flex-end;
 		align-items: center;
-		flex-wrap: wrap;
-		gap: 1rem;
-		border-top: 1px dashed #00000033;
+		border-top: 1px dashed var(--sd-border);
 		padding-top: 1rem;
-	}
-
-	.badges {
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
+		margin-top: auto;
 	}
 
 	.launch-link {
 		text-decoration: none;
-	}
-
-	.licensed-badge {
-		display: inline-block;
-		font-weight: 800;
-		text-transform: uppercase;
-		font-size: 0.7rem;
-		letter-spacing: 0.05em;
-		padding: 0.2rem 0.6rem;
-		border: 2px solid #000;
-		border-radius: 6px 12px 6px 12px/12px 6px 12px 6px;
-		background: #000;
-		color: #fff;
-	}
-
-	.paywall-badge {
-		display: inline-block;
-		font-weight: 800;
-		text-transform: uppercase;
-		font-size: 0.7rem;
-		letter-spacing: 0.05em;
-		padding: 0.2rem 0.6rem;
-		border: 2px dashed #000;
-		border-radius: 6px 12px 6px 12px/12px 6px 12px 6px;
-		background: #fff;
-		color: #000;
-	}
-
-	.uninstalled-badge {
-		display: inline-block;
-		font-weight: 800;
-		text-transform: uppercase;
-		font-size: 0.7rem;
-		letter-spacing: 0.05em;
-		padding: 0.2rem 0.6rem;
-		border: 2px solid #000;
-		border-radius: 6px 12px 6px 12px/12px 6px 12px 6px;
-		background: repeating-linear-gradient(45deg, #000, #000 4px, #fff 4px, #fff 8px);
-		color: #fff;
-		text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
-	}
-
-	.hint {
-		margin-top: 1rem;
-		font-size: 0.8rem;
-		line-height: 1.4;
-		opacity: 0.75;
-		font-style: italic;
-	}
-
-	.inline-link {
-		color: #000;
-		font-weight: 700;
-		text-decoration: underline;
-	}
-	.inline-link:hover {
-		opacity: 0.8;
 	}
 </style>

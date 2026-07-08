@@ -16,27 +16,28 @@ Examples of the kind of problems we target: authorization, integrations, automat
 
 ## Products
 
-### Komfyrvakt
+### SEDE
 
-**Komfyrvakt** (Norwegian: *stove guard* — a safety device that monitors stove activity and cuts the power if a burner gets dangerously hot) is a self-hostable event monitoring and decision engine. It acts as an automated digital circuit breaker and escalation guard for any stream of data.
+**SEDE** (Norwegian: *stove guard* — a safety device that monitors stove activity and cuts the power if a burner gets dangerously hot) is a self-hostable event monitoring and decision engine. It acts as an automated digital circuit breaker and escalation guard for any stream of data.
 
-You post logs (from IoT sensors, SaaS apps, background workers, or integrations). Komfyrvakt monitors the stream, detects when a pattern crosses your safety thresholds, and invokes an AI layer only when human-like judgment is needed. The AI analyzes the context—what the stream is, what the data says, and what actions are allowed—and returns a structured decision. Your integration code parses that decision to run the safety handler: page a technician, shut off an API key, trigger a webhook, or alert managers.
+You post logs (from IoT sensors, SaaS apps, background workers, or integrations). SEDE monitors the stream, detects when a pattern crosses your safety thresholds, and invokes an AI layer only when human-like judgment is needed. The AI analyzes the context—what the stream is, what the data says, and what actions are allowed—and returns a structured decision. Your integration code parses that decision to run the safety handler: page a technician, shut off an API key, trigger a webhook, or alert managers.
 
 It is built to be **implemented anywhere** you need a reliable monitoring brain. Completely self-hosted so you keep absolute control over your logs, credentials, and compute.
 
-**Example:** A restaurant chain monitors six fridge/freezer environments. Sensors post temperature readings every 10 seconds. A door stays open after closing, temperatures climb, and the stream crosses thresholds. Komfyrvakt analyzes the pattern and decides whether to alert a manager, escalate, or dismiss — your integration code executes the result.
+**Example:** A restaurant chain monitors six fridge/freezer environments. Sensors post temperature readings every 10 seconds. A door stays open after closing, temperatures climb, and the stream crosses thresholds. SEDE analyzes the pattern and decides whether to alert a manager, escalate, or dismiss — your integration code executes the result.
 
 ## Repository
 
 ```text
 sjursen-digital/
 ├── assets/logo/        # Brand assets
-├── shared/             # Shared assets across all services
+├── shared/             # Shared assets across all apps
 │   └── components/     # Reusable Svelte UI components (e.g. Card, Button)
-└── services/           # Self-contained products and services
-    └── komfyrvakt/     # Flagship product: Event safety system
-        ├── api/        # FastAPI backend & SQLite database
-        └── ui/         # SvelteKit frontend (compiled into api/static/)
+├── website/            # Company homepage (static SvelteKit site, host anywhere)
+├── gateway/            # The self-hosted Gateway customers download
+│   ├── api/            # FastAPI reverse proxy & launcher backend
+│   └── ui/             # SvelteKit launcher UI (compiled into api/static/)
+└── services/           # Product modules mounted under the Gateway (in development)
 ```
 
 ## Brand

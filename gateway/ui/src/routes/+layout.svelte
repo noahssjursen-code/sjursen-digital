@@ -1,78 +1,15 @@
-<script lang="ts">
-	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { getSessionToken, clearSessionToken } from '$lib/api';
-
-	let authenticated = false;
-
-	const nav = [
-		{ href: '/', label: 'Apps' },
-		{ href: '/keys', label: 'Licensing' }
-	];
-
-	$: current = $page.url.pathname;
-	const isActive = (href: string, path: string) =>
-		href === '/' ? path === '/' : path.startsWith(href);
-
-	function logout() {
-		clearSessionToken();
-		authenticated = false;
-		goto('/login');
-	}
-
-	onMount(() => {
-		const token = getSessionToken();
-		const isLoginPath = $page.url.pathname.startsWith('/login');
-		
-		if (!token && !isLoginPath) {
-			goto('/login');
-		} else if (token) {
-			authenticated = true;
-			if (isLoginPath) {
-				goto('/');
-			}
-		}
-	});
-
-	// Keep authentication state reactive to page transitions
-	$: {
-		if (typeof window !== 'undefined') {
-			const token = getSessionToken();
-			authenticated = !!token;
-		}
-	}
-</script>
-
 <div class="shell">
 	<header class="header">
 		<a class="brand" href="/">
-			<svg class="logo" viewBox="0 0 100 100" fill="none" role="img" aria-label="Sjursen Digital">
-				<path
-					d="M 46,25 C 33,25 25,32 25,41 C 25,51 45,49 45,59 C 45,68 37,75 24,75 L 60,75 C 73,75 75,64 75,50 C 75,36 73,25 60,25 Z"
-					stroke="currentColor"
-					stroke-width="6.5"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				/>
-			</svg>
+			<img class="logo" src="/logo.png" alt="Sjursen Digital logo" />
 			<div class="brand-text">
 				<span class="brand-name">Sjursen Digital</span>
-				<span class="sub-name">Gateway Portal</span>
+				<span class="sub-name">Gateway Control</span>
 			</div>
 		</a>
-
-		{#if authenticated}
-			<nav>
-				{#each nav as item}
-					<a href={item.href} class:active={isActive(item.href, current)}>{item.label}</a>
-				{/each}
-				<button class="logout-btn" on:click={logout}>Logout</button>
-			</nav>
-		{/if}
 	</header>
 
-	<main>
+	<main class="main-content">
 		<slot />
 	</main>
 </div>
@@ -87,19 +24,33 @@
 			'Segoe UI',
 			Roboto,
 			sans-serif;
-		background-color: #fdfdfb;
-		color: #000;
-		background-image: radial-gradient(#f1f3f5 1.5px, transparent 1.5px);
-		background-size: 20px 24px;
+		background-color: #fafafa;
+		color: #18181b;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+
+		/* Sjursen Digital design tokens (light app theme) */
+		--sd-surface: #ffffff;
+		--sd-text: #18181b;
+		--sd-text-muted: #52525b;
+		--sd-border: #e4e4e7;
+		--sd-border-subtle: #f4f4f5;
+		--sd-action: #18181b;
+		--sd-action-hover: #27272a;
+		--sd-action-text: #ffffff;
+		--sd-disabled: #f4f4f5;
+		--sd-disabled-text: #a1a1aa;
+		--sd-badge-bg: #f4f4f5;
+		--sd-badge-text: #3f3f46;
 	}
 	:global(*) {
 		box-sizing: border-box;
 	}
 
 	.shell {
-		max-width: 960px;
+		max-width: 1040px;
 		margin: 0 auto;
-		padding: 1.5rem 1rem 4rem;
+		padding: 2.5rem 1.5rem 6rem;
 	}
 
 	.header {
@@ -108,9 +59,9 @@
 		align-items: center;
 		flex-wrap: wrap;
 		gap: 1rem;
-		border-bottom: 2px solid #000;
-		padding-bottom: 1.2rem;
-		margin-bottom: 2.5rem;
+		border-bottom: 1px solid var(--sd-border);
+		padding-bottom: 1.5rem;
+		margin-bottom: 3.5rem;
 	}
 
 	.brand {
@@ -118,67 +69,49 @@
 		align-items: center;
 		gap: 0.9rem;
 		text-decoration: none;
-		color: #000;
+		color: var(--sd-text);
 	}
+
 	.logo {
-		width: 44px;
-		height: 44px;
-		transform: rotate(-1.5deg);
+		height: 30px;
+		width: auto;
+		transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 	}
+	.brand:hover .logo {
+		transform: scale(1.04);
+	}
+
 	.brand-text {
 		display: flex;
 		flex-direction: column;
 	}
 	.brand-name {
-		font-size: 1.4rem;
-		font-weight: 900;
-		letter-spacing: -0.03em;
-		text-transform: uppercase;
+		font-size: 1.25rem;
+		font-weight: 700;
+		letter-spacing: -0.025em;
 		line-height: 1.1;
 	}
 	.sub-name {
 		font-size: 0.75rem;
-		font-weight: 800;
-		letter-spacing: 0.1em;
+		font-weight: 500;
+		letter-spacing: 0.05em;
 		text-transform: uppercase;
-		opacity: 0.6;
-		margin-top: 0.1rem;
+		color: var(--sd-text-muted);
+		margin-top: 0.15rem;
 	}
 
-	nav {
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-		flex-wrap: wrap;
+	.main-content {
+		animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 	}
-	nav a, .logout-btn {
-		color: #000;
-		text-decoration: none;
-		font-weight: 800;
-		text-transform: uppercase;
-		font-size: 0.85rem;
-		letter-spacing: 0.03em;
-		padding: 0.4rem 0.9rem;
-		border: 2px solid transparent;
-		border-radius: 12px 6px 10px 6px/6px 10px 6px 8px;
-		background: none;
-		cursor: pointer;
-		font-family: inherit;
-	}
-	nav a:hover, .logout-btn:hover {
-		border-color: #000;
-	}
-	nav a.active {
-		background: #000;
-		color: #fff;
-		border-color: #000;
-		box-shadow: 2px 2px 0 #000;
-	}
-	.logout-btn {
-		opacity: 0.75;
-	}
-	.logout-btn:hover {
-		opacity: 1;
-		background-color: #fff;
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 </style>

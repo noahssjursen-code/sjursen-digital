@@ -6,46 +6,50 @@
 <button
   {type}
   {disabled}
-  class="normal-button"
+  class="btn"
   on:click
 >
   <slot />
 </button>
 
 <style>
-  .normal-button {
-    background-color: #ffffff;
-    color: #000000;
-    border: 2px solid #000000;
-    font-weight: 800;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.02em;
-    padding: 0.5rem 1.1rem;
-    /* Toned-down hand-drawn button profile */
-    border-radius: 12px 6px 10px 6px/6px 10px 6px 8px;
-    box-shadow: 2px 2px 0px #000000;
+  /* Themeable via --sd-* tokens; defaults are the light app theme. */
+  .btn {
+    background-color: var(--sd-action, #18181b);
+    color: var(--sd-action-text, #ffffff);
+    border: 1px solid var(--sd-action, #18181b);
+    font-weight: 500;
+    font-size: 0.875rem;
+    letter-spacing: -0.01em;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
-  .normal-button:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0px #000000;
+  .btn:hover:not(:disabled) {
+    background-color: var(--sd-action-hover, #27272a);
+    border-color: var(--sd-action-hover, #27272a);
+    transform: translateY(-0.5px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
   }
 
-  .normal-button:active:not(:disabled) {
-    transform: translate(2px, 2px);
-    box-shadow: 0px 0px 0px #000000;
+  .btn:active:not(:disabled) {
+    transform: translateY(0.5px);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
   }
 
-  .normal-button:disabled {
-    opacity: 0.5;
+  .btn:disabled {
+    opacity: 0.4;
     cursor: not-allowed;
-    background-color: #f1f5f9;
+    background-color: var(--sd-disabled, #f4f4f5);
+    color: var(--sd-disabled-text, #a1a1aa);
+    border-color: var(--sd-border, #e4e4e7);
+    box-shadow: none;
   }
 </style>

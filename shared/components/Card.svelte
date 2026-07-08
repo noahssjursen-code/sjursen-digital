@@ -2,44 +2,49 @@
   export let title: string = "";
 </script>
 
-<div class="normal-card">
+<div class="card">
   {#if title}
-    <h3 class="normal-card-title">{title}</h3>
+    <h3 class="card-title">{title}</h3>
   {/if}
-  <div class="normal-card-content">
+  <div class="card-content">
     <slot />
   </div>
 </div>
 
 <style>
-  .normal-card {
-    background-color: #ffffff;
-    color: #000000;
-    border: 2px solid #000000;
-    /* A more subtle hand-drawn organic curve */
-    border-radius: 16px 8px 14px 10px/8px 16px 10px 14px;
+  /* Themeable via --sd-* tokens; defaults are the light app theme. */
+  .card {
+    background-color: var(--sd-surface, #ffffff);
+    color: var(--sd-text, #18181b);
+    border: 1px solid var(--sd-border, #e4e4e7);
+    border-radius: 12px;
     padding: 1.5rem;
-    box-shadow: 3px 3px 0px #000000;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: var(
+      --sd-shadow,
+      0 1px 3px rgba(0, 0, 0, 0.05),
+      0 10px 15px -3px rgba(0, 0, 0, 0.03),
+      0 4px 6px -4px rgba(0, 0, 0, 0.03)
+    );
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     margin-bottom: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
 
-  .normal-card-title {
+  .card-title {
     margin: 0;
-    font-size: 1.05rem;
-    font-weight: 800;
-    text-transform: uppercase;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--sd-text, #18181b);
     letter-spacing: -0.01em;
-    border-bottom: 2px solid #000000;
-    padding-bottom: 0.4rem;
-    border-radius: 6px 12px 4px 12px/4px 6px 4px 6px;
+    border-bottom: 1px solid var(--sd-border-subtle, #f4f4f5);
+    padding-bottom: 0.75rem;
   }
 
-  .normal-card-content {
-    font-size: 1rem;
-    line-height: 1.4;
+  .card-content {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--sd-text-muted, #52525b);
   }
 </style>

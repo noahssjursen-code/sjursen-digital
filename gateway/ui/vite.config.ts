@@ -10,8 +10,9 @@ export default defineConfig({
 		}
 	},
 	server: {
-		port: 3001,
+		port: 3000,
 		proxy: {
+			// Route central gateway APIs to the gateway backend
 			'/api': 'http://localhost:8000'
 		},
 		fs: {
