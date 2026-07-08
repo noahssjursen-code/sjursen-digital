@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { base } from '$app/paths';
 	import Card from '$shared/Card.svelte';
 	import StateBadge from '$lib/StateBadge.svelte';
 	import { api, timeAgo } from '$lib/api';
@@ -51,7 +52,7 @@
 	</Card>
 {:else}
 	{#each instances as inst (inst.id)}
-		<a class="row-link" href="/instances/{inst.id}">
+		<a class="row-link" href="{base}/instances/{inst.id}">
 			<Card>
 				<div class="row">
 					<div>

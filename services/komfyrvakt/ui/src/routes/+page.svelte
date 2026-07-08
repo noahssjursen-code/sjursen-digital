@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { base } from '$app/paths';
 	import Card from '$shared/Card.svelte';
 	import Button from '$shared/Button.svelte';
 	import Badge from '$shared/Badge.svelte';
@@ -94,7 +95,7 @@
 					</div>
 					<p class="summary">{alert.summary}</p>
 					{#if alert.instance_name}
-						<a class="instance-link" href="/instances/{alert.instance_id}">
+						<a class="instance-link" href="{base}/instances/{alert.instance_id}">
 							{alert.instance_name} ({alert.entity_type})
 						</a>
 					{/if}

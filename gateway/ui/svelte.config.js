@@ -5,18 +5,13 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
 	preprocess: vitePreprocess(),
 	kit: {
-		// adapter-static is ideal for single-container architectures
-		// since it builds a zero-dependency SPA that FastAPI can serve directly
 		adapter: adapter({
 			pages: '../api/static',
 			assets: '../api/static',
 			fallback: 'index.html',
 			precompress: false,
 			strict: true
-		}),
-		paths: {
-			base: '/services/komfyrvakt'
-		}
+		})
 	}
 };
 

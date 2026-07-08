@@ -15,5 +15,10 @@ __pycache__/
 # Komfyrvakt runtime artifacts
 services/komfyrvakt/api/static/
 services/komfyrvakt/api/data/
+
+# Gateway runtime artifacts
+gateway/api/static/
+gateway/api/data/
+gateway_secret.txt
 *.db-shm
 *.db-wal

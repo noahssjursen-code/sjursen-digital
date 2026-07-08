@@ -1,21 +1,22 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { base } from '$app/paths';
 
 	const nav = [
-		{ href: '/', label: 'Alerts' },
-		{ href: '/instances', label: 'Instances' },
-		{ href: '/types', label: 'Types' },
-		{ href: '/keys', label: 'Keys' }
+		{ href: `${base}/`, label: 'Alerts' },
+		{ href: `${base}/instances`, label: 'Instances' },
+		{ href: `${base}/types`, label: 'Types' },
+		{ href: `${base}/keys`, label: 'Keys' }
 	];
 
 	$: current = $page.url.pathname;
 	const isActive = (href: string, path: string) =>
-		href === '/' ? path === '/' : path.startsWith(href);
+		href === `${base}/` ? path === `${base}/` || path === `${base}` : path.startsWith(href);
 </script>
 
 <div class="shell">
 	<header class="header">
-		<a class="brand" href="/">
+		<a class="brand" href="{base}/">
 			<svg class="logo" viewBox="0 0 100 100" fill="none" role="img" aria-label="Komfyrvakt">
 				<path
 					d="M 46,25 C 33,25 25,32 25,41 C 25,51 45,49 45,59 C 45,68 37,75 24,75 L 60,75 C 73,75 75,64 75,50 C 75,36 73,25 60,25 Z"
