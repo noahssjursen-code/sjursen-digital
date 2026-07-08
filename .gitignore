@@ -1,0 +1,13 @@
+node_modules/
+.svelte-kit/
+build/
+dist/
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+venv/
+__pycache__/
+.pytest_cache/
+.pydantic_paths/
