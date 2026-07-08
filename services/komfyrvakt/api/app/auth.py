@@ -14,11 +14,32 @@ def hash_key(raw: str) -> str:
 
 
 def bootstrap_admin_key(session: Session) -> str | None:
-    """First startup: create an admin key. Returns the raw key exactly once
-    (printed to the server log) unless KOMFYRVAKT_ADMIN_KEY pins it."""
+    """Ensure an admin key exists.
+
+    - KOMFYRVAKT_ADMIN_KEY env var set: that key is guaranteed to be a valid
+      wildcard admin key on EVERY startup (created, un-revoked, or upgraded
+      as needed). This is the break-glass recovery path if all keys are lost.
+    - Otherwise, on first startup a random admin key is generated and
+      returned so it can be printed exactly once. Only hashes are stored;
+      raw keys are never recoverable afterwards.
+    """
+    env_raw = os.environ.get("KOMFYRVAKT_ADMIN_KEY")
+    if env_raw:
+        key_hash = hash_key(env_raw)
+        existing = session.exec(select(ApiKey).where(ApiKey.key_hash == key_hash)).first()
+        if existing is None:
+            session.add(ApiKey(name="env-admin", key_hash=key_hash, role="admin", namespace="*"))
+        elif existing.revoked or existing.role != "admin" or existing.namespace != "*":
+            existing.revoked = False
+            existing.role = "admin"
+            existing.namespace = "*"
+            session.add(existing)
+        session.commit()
+        return None
+
     if session.exec(select(ApiKey)).first() is not None:
         return None
-    raw = os.environ.get("KOMFYRVAKT_ADMIN_KEY") or ("kv_" + secrets.token_urlsafe(32))
+    raw = "kv_" + secrets.token_urlsafe(32)
     session.add(ApiKey(name="bootstrap-admin", key_hash=hash_key(raw), role="admin", namespace="*"))
     session.commit()
     return raw

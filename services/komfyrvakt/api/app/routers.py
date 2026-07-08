@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import delete
 from sqlmodel import Session, func, select
 
 from .auth import check_namespace, hash_key, require_admin, require_ingest
@@ -22,6 +23,8 @@ router = APIRouter(prefix="/api")
 
 @router.get("/health")
 def health(session: Session = Depends(get_session)):
+    from .selftest import RESULTS as selftest_results
+
     return {
         "status": "ok",
         "service": "komfyrvakt",
@@ -30,6 +33,7 @@ def health(session: Session = Depends(get_session)):
         "active_alerts": session.exec(
             select(func.count()).select_from(Alert).where(Alert.status == "active")
         ).one(),
+        "selftest": selftest_results,
     }
 
 
@@ -81,6 +85,47 @@ def upsert_namespace(
     session.commit()
     session.refresh(ns)
     return {**_ns_out(ns), "created": created}
+
+
+@router.delete("/ns/{namespace}")
+def purge_namespace(
+    namespace: str,
+    key: ApiKey = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    """Remove a namespace and ALL its data (types, instances, logs, alerts,
+    decisions, scoped keys). This is the GDPR/offboarding hammer -
+    irreversible."""
+    check_namespace(key, namespace)
+    instances = session.exec(select(Instance).where(Instance.namespace == namespace)).all()
+    instance_ids = [i.id for i in instances]
+    counts = {
+        "instances": len(instances),
+        "logs": 0,
+        "alerts": 0,
+        "decisions": 0,
+        "entity_types": 0,
+        "keys_deleted": 0,
+    }
+    if instance_ids:
+        counts["logs"] = session.execute(
+            delete(LogEntry).where(LogEntry.instance_id.in_(instance_ids))  # type: ignore[union-attr]
+        ).rowcount
+    counts["alerts"] = session.execute(delete(Alert).where(Alert.namespace == namespace)).rowcount
+    counts["decisions"] = session.execute(delete(Decision).where(Decision.namespace == namespace)).rowcount
+    for i in instances:
+        session.delete(i)
+    counts["entity_types"] = session.execute(
+        delete(EntityType).where(EntityType.namespace == namespace)
+    ).rowcount
+    for k in session.exec(select(ApiKey).where(ApiKey.namespace == namespace)).all():
+        session.delete(k)
+        counts["keys_deleted"] += 1
+    ns = session.exec(select(Namespace).where(Namespace.name == namespace)).first()
+    if ns:
+        session.delete(ns)
+    session.commit()
+    return {"purged": namespace, **counts}
 
 
 # ---------------------------------------------------------------- entity types

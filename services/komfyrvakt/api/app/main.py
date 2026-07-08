@@ -12,6 +12,7 @@ from .auth import bootstrap_admin_key
 from .database import engine, init_db
 from .routers import router
 from .scheduler import run_scheduler
+from .selftest import run_startup_selftest
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("komfyrvakt")
@@ -29,9 +30,15 @@ async def lifespan(app: FastAPI):
         logger.warning("FIRST STARTUP - bootstrap admin API key (shown only once, save it):")
         logger.warning("  %s", raw)
         logger.warning("=" * 72)
-    task = asyncio.create_task(run_scheduler())
+    elif os.environ.get("KOMFYRVAKT_ADMIN_KEY"):
+        logger.info("Admin key from KOMFYRVAKT_ADMIN_KEY is active")
+
+    tasks = [asyncio.create_task(run_scheduler())]
+    if os.environ.get("KOMFYRVAKT_SELFTEST", "1") != "0":
+        tasks.append(asyncio.create_task(run_startup_selftest(app)))
     yield
-    task.cancel()
+    for task in tasks:
+        task.cancel()
 
 
 app = FastAPI(title="Komfyrvakt", version="0.1.0", lifespan=lifespan)
